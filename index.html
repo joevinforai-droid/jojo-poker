@@ -1,94 +1,88 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Jojo Poker</title>
-  </head>
-  <body>
-    <h1>Jojo Poker 🃏</h1>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Poker Sessions</title>
+  <script type="module">
+    // Import Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    <div id="loginDiv">
-      <input type="text" id="playerName" placeholder="Enter your name" />
-      <button onclick="login()">Start</button>
-    </div>
+    // Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
+      authDomain: "jojo-pokler.firebaseapp.com",
+      projectId: "jojo-pokler",
+      storageBucket: "jojo-pokler.firebasestorage.app",
+      messagingSenderId: "963260398028",
+      appId: "1:963260398028:web:ce28df14ea78042e968569",
+      measurementId: "G-V78WWQ0VZQ"
+    };
 
-    <div id="appDiv" style="display:none;">
-      <h2>Welcome, <span id="displayName"></span>!</h2>
-      <button onclick="addSession()">➕ Add Poker Session</button>
-      <ul id="sessionList"></ul>
-    </div>
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-    <script type="module">
-      // --- Firebase Setup ---
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-      import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    // Handle login
+    async function login() {
+      const nameInput = document.getElementById("name");
+      const playerName = nameInput.value.trim();
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
-        authDomain: "jojo-pokler.firebaseapp.com",
-        projectId: "jojo-pokler",
-        storageBucket: "jojo-pokler.firebasestorage.app",
-        messagingSenderId: "963260398028",
-        appId: "1:963260398028:web:ce28df14ea78042e968569",
-        measurementId: "G-V78WWQ0VZQ"
-      };
-
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-
-      // --- Login Function ---
-      function login() {
-        const name = document.getElementById("playerName").value;
-        if (!name) {
-          alert("Please enter your name");
-          return;
-        }
-        localStorage.setItem("playerName", name); // store locally
-        document.getElementById("loginDiv").style.display = "none";
-        document.getElementById("appDiv").style.display = "block";
-        document.getElementById("displayName").innerText = name;
-        loadSessions();
+      if (!playerName) {
+        alert("Please enter a name");
+        return;
       }
 
-      // --- Add Session Function ---
-      async function addSession() {
-        const name = localStorage.getItem("playerName");
-        try {
-          const docRef = await addDoc(collection(db, "sessions"), {
-            player: name,
-            buyIn: 100, // placeholder
-            cashOut: 150, // placeholder
-            created: new Date().toISOString()
-          });
-          console.log("✅ Session added with ID: ", docRef.id);
-          loadSessions();
-        } catch (e) {
-          console.error("❌ Error adding session: ", e);
-        }
-      }
-
-      // --- Load Sessions Function ---
-      async function loadSessions() {
-        const sessionList = document.getElementById("sessionList");
-        sessionList.innerHTML = "";
-        const querySnapshot = await getDocs(collection(db, "sessions"));
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          const li = document.createElement("li");
-          li.textContent = `${data.player} | Buy-in: ${data.buyIn}, Cash-out: ${data.cashOut}`;
-          sessionList.appendChild(li);
+      // Save player to Firestore
+      try {
+        const docRef = await addDoc(collection(db, "players"), {
+          name: playerName,
+          joinedAt: new Date()
         });
-      }
+        console.log("✅ Player added with ID: ", docRef.id);
 
-      // Auto login if name is saved
-      if (localStorage.getItem("playerName")) {
-        document.getElementById("loginDiv").style.display = "none";
-        document.getElementById("appDiv").style.display = "block";
-        document.getElementById("displayName").innerText = localStorage.getItem("playerName");
+        // Hide login, show sessions
+        document.getElementById("login").style.display = "none";
+        document.getElementById("sessions").style.display = "block";
+
+        // Show welcome message
+        document.getElementById("welcome").innerText = `Welcome, ${playerName}!`;
+
+        // Load sessions
         loadSessions();
+      } catch (e) {
+        console.error("❌ Error adding player: ", e);
       }
+    }
 
-      window.login = login;
-      window.addSession = addSession;
-    </script>
-  </body>
+    // Load poker sessions
+    async function loadSessions() {
+      const sessionsList = document.getElementById("sessionsList");
+      sessionsList.innerHTML = "";
+
+      const querySnapshot = await getDocs(collection(db, "sessions"));
+      querySnapshot.forEach((doc) => {
+        const session = doc.data();
+        const li = document.createElement("li");
+        li.textContent = session.name || "Unnamed Session";
+        sessionsList.appendChild(li);
+      });
+    }
+
+    window.login = login;
+  </script>
+</head>
+<body>
+  <div id="login">
+    <h2>Enter your name to join</h2>
+    <input type="text" id="name" placeholder="Your name" />
+    <button onclick="login()">Join</button>
+  </div>
+
+  <div id="sessions" style="display:none;">
+    <h2 id="welcome"></h2>
+    <h3>Available Sessions:</h3>
+    <ul id="sessionsList"></ul>
+  </div>
+</body>
 </html>
