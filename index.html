@@ -1,58 +1,48 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Jojo Poker</title>
-  </head>
-  <body>
-    <h1>Welcome to Jojo Poker 🃏</h1>
-    <p>If you can see this page, the site is live!</p>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Jojo Poker</title>
+</head>
+<body>
+  <h1>Welcome to Jojo Poker</h1>
+  <p>If you can read this, the site is live 🚀</p>
 
-    <!-- Firebase SDKs -->
-    <script type="module">
-      // Import Firebase
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-      import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+  <!-- Firebase setup -->
+  <script type="module">
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-      // Your Firebase config (use the one you saved in notepad)
-      const firebaseConfig = {
-        apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
-        authDomain: "jojo-pokler.firebaseapp.com",
-        projectId: "jojo-pokler",
-        storageBucket: "jojo-pokler.firebasestorage.app",
-        messagingSenderId: "963260398028",
-        appId: "1:963260398028:web:ce28df14ea78042e968569",
-        measurementId: "G-V78WWQ0VZQ"
-      };
+    // Your Firebase config (the one you copied from Firebase console)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
+      authDomain: "jojo-pokler.firebaseapp.com",
+      projectId: "jojo-pokler",
+      storageBucket: "jojo-pokler.firebasestorage.app",
+      messagingSenderId: "963260398028",
+      appId: "1:963260398028:web:ce28df14ea78042e968569",
+      measurementId: "G-V78WWQ0VZQ"
+    };
 
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-      console.log("✅ Firebase is connected!");
-    </script>
-   <script type="module">
-  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-  const app = getApp();
-  const db = getFirestore(app);
-
-  // Test: add something to Firestore
-  async function testFirestore() {
-    try {
-      const docRef = await addDoc(collection(db, "testCollection"), {
-        name: "Jojo Poker",
-        created: new Date()
-      });
-      console.log("Test document written with ID: ", docRef.id);
-    } catch (e) {
-      console.error("Error adding document: ", e);
+    // Test writing to Firestore
+    async function testFirestore() {
+      try {
+        const docRef = await addDoc(collection(db, "testCollection"), {
+          name: "Jojo Poker",
+          created: new Date()
+        });
+        console.log("✅ Test document written with ID:", docRef.id);
+      } catch (e) {
+        console.error("❌ Error adding document:", e);
+      }
     }
-  }
 
-  testFirestore();
-</script>
-
-  </body>
+    testFirestore();
+  </script>
+</body>
 </html>
