@@ -69,6 +69,45 @@
         console.log("🎮 Game status updated:", status);
       }
     });
+    const createSessionBtn = document.getElementById("createSessionBtn");
+const sessionList = document.getElementById("sessionList");
+
+createSessionBtn.addEventListener("click", async () => {
+  try {
+    // Get all current players in lobby
+    const playersSnapshot = await getDocs(collection(db, "players"));
+    const players = [];
+    playersSnapshot.forEach(doc => players.push(doc.data().name));
+
+    if (players.length === 0) return alert("No players to start a session!");
+
+    // Create session in Firestore
+    const docRef = await addDoc(collection(db, "sessions"), {
+      name: `Session ${new Date().toLocaleTimeString()}`,
+      players: players,
+      createdAt: new Date(),
+      status: "waiting", // waiting, in-progress, finished
+      buyIn: 0,
+      moneyInHand: 0
+    });
+
+    console.log("✅ Session created with ID:", docRef.id);
+  } catch (e) {
+    console.error("❌ Error creating session:", e);
+  }
+});
+
+// Listen for live sessions
+onSnapshot(collection(db, "sessions"), snapshot => {
+  sessionList.innerHTML = "";
+  snapshot.forEach(doc => {
+    const s = doc.data();
+    const li = document.createElement("li");
+    li.textContent = `${s.name} | Players: ${s.players.join(", ")} | Status: ${s.status}`;
+    sessionList.appendChild(li);
+  });
+});
+
   </script>
 </head>
 <body>
@@ -81,5 +120,8 @@
 
   <button id="startBtn">Start Game</button>
   <p id="gameStatus"></p>
+  <button id="createSessionBtn">Create Poker Session</button>
+<ul id="sessionList"></ul>
+
 </body>
 </html>
