@@ -45,8 +45,15 @@ const firebaseConfig = {
   messagingSenderId: "YOUR_SENDER_ID",
   appId: "YOUR_APP_ID"
 };
+
+// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+
+// Test connection
+db.collection("sessions").doc("testConnection").set({ hello: "world" })
+  .then(()=>console.log("✅ Firebase write test succeeded"))
+  .catch(err=>console.error("❌ Firebase write test failed:", err));
 
 const nameInput = document.getElementById("nameInput");
 const joinBtn = document.getElementById("joinBtn");
@@ -70,26 +77,32 @@ const resetBoardBtn = document.getElementById("resetBoardBtn");
 let playerName = "";
 const sessionDoc = db.collection("sessions").doc("current");
 
-// Join lobby
+// Join Lobby
 joinBtn.onclick = async function() {
   const name = nameInput.value.trim();
   if(!name) return alert("Enter your name!");
   playerName = name;
-  const docSnap = await sessionDoc.get();
-  const data = docSnap.exists ? docSnap.data() : {};
-  const players = data.players || [];
-  if(!players.includes(name)) players.push(name);
+  try {
+    const docSnap = await sessionDoc.get();
+    const data = docSnap.exists ? docSnap.data() : {};
+    const players = data.players || [];
+    if(!players.includes(name)) players.push(name);
 
-  await sessionDoc.set({
-    players: players,
-    holeCards: data.holeCards || {},
-    board: data.board || { flop:["","",""], turn:"", river:"" },
-    status: "waiting"
-  });
+    await sessionDoc.set({
+      players: players,
+      holeCards: data.holeCards || {},
+      board: data.board || { flop:["","",""], turn:"", river:"" },
+      status: "waiting"
+    });
 
-  holeCardsDiv.style.display = "block";
-  adminDiv.style.display = "block";
-}
+    holeCardsDiv.style.display = "block";
+    adminDiv.style.display = "block";
+    alert("✅ Joined lobby as " + name);
+  } catch(e) {
+    console.error("❌ Error joining lobby:", e);
+    alert("Failed to join lobby");
+  }
+};
 
 // Live updates
 sessionDoc.onSnapshot(docSnap=>{
@@ -125,26 +138,33 @@ submitHoleBtn.onclick = async function(){
   const c1 = card1Input.value.trim();
   const c2 = card2Input.value.trim();
   if(!c1||!c2) return alert("Enter both cards!");
-  const docSnap = await sessionDoc.get();
-  const data = docSnap.data();
-  const holeCards = Object.assign({}, data.holeCards);
-  holeCards[playerName] = [c1,c2];
-  await sessionDoc.update({ holeCards });
-}
+  try{
+    const docSnap = await sessionDoc.get();
+    const data = docSnap.data();
+    const holeCards = Object.assign({}, data.holeCards);
+    holeCards[playerName] = [c1,c2];
+    await sessionDoc.update({ holeCards });
+  }catch(e){ console.error(e); }
+};
 
-// Board update
+// Update board
 submitBoardBtn.onclick = async function(){
-  const docSnap = await sessionDoc.get();
-  const data = docSnap.data();
-  const flopValues = flopInputs.map(i=>i.value.trim());
-  await sessionDoc.update({
-    board: { flop: flopValues, turn: turnInput.value.trim(), river: riverInput.value.trim() }
-  });
-}
+  try{
+    const docSnap = await sessionDoc.get();
+    const data = docSnap.data();
+    const flopValues = flopInputs.map(i=>i.value.trim());
+    await sessionDoc.update({
+      board: { flop: flopValues, turn: turnInput.value.trim(), river: riverInput.value.trim() }
+    });
+  }catch(e){ console.error(e); }
+};
 
+// Reset board
 resetBoardBtn.onclick = async function(){
-  await sessionDoc.update({ board:{ flop:["","",""], turn:"", river:"" } });
-}
+  try{
+    await sessionDoc.update({ board:{ flop:["","",""], turn:"", river:"" } });
+  }catch(e){ console.error(e); }
+};
 </script>
 </body>
 </html>
