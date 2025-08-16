@@ -1,88 +1,53 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Poker Sessions</title>
-  <script type="module">
-    // Import Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<html>
+  <head>
+    <title>Poker App</title>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <h1>Poker App</h1>
+    <input id="playerName" placeholder="Enter your name" />
+    <button id="joinBtn">Join</button>
 
-    // Your Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
-      authDomain: "jojo-pokler.firebaseapp.com",
-      projectId: "jojo-pokler",
-      storageBucket: "jojo-pokler.firebasestorage.app",
-      messagingSenderId: "963260398028",
-      appId: "1:963260398028:web:ce28df14ea78042e968569",
-      measurementId: "G-V78WWQ0VZQ"
-    };
+    <script type="module">
+      // Import Firebase
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+      // Your Firebase config
+      const firebaseConfig = {
+        apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
+        authDomain: "jojo-pokler.firebaseapp.com",
+        projectId: "jojo-pokler",
+        storageBucket: "jojo-pokler.firebasestorage.app",
+        messagingSenderId: "963260398028",
+        appId: "1:963260398028:web:ce28df14ea78042e968569",
+        measurementId: "G-V78WWQ0VZQ"
+      };
 
-    // Handle login
-    async function login() {
-      const nameInput = document.getElementById("name");
-      const playerName = nameInput.value.trim();
+      // Init Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
 
-      if (!playerName) {
-        alert("Please enter a name");
-        return;
-      }
+      // Join button logic
+      document.getElementById("joinBtn").addEventListener("click", async () => {
+        const name = document.getElementById("playerName").value.trim();
+        if (!name) {
+          alert("Enter a name first!");
+          return;
+        }
 
-      // Save player to Firestore
-      try {
-        const docRef = await addDoc(collection(db, "players"), {
-          name: playerName,
-          joinedAt: new Date()
-        });
-        console.log("✅ Player added with ID: ", docRef.id);
-
-        // Hide login, show sessions
-        document.getElementById("login").style.display = "none";
-        document.getElementById("sessions").style.display = "block";
-
-        // Show welcome message
-        document.getElementById("welcome").innerText = `Welcome, ${playerName}!`;
-
-        // Load sessions
-        loadSessions();
-      } catch (e) {
-        console.error("❌ Error adding player: ", e);
-      }
-    }
-
-    // Load poker sessions
-    async function loadSessions() {
-      const sessionsList = document.getElementById("sessionsList");
-      sessionsList.innerHTML = "";
-
-      const querySnapshot = await getDocs(collection(db, "sessions"));
-      querySnapshot.forEach((doc) => {
-        const session = doc.data();
-        const li = document.createElement("li");
-        li.textContent = session.name || "Unnamed Session";
-        sessionsList.appendChild(li);
+        try {
+          const docRef = await addDoc(collection(db, "players"), {
+            name: name,
+            joinedAt: new Date()
+          });
+          console.log("✅ Player added with ID:", docRef.id);
+          alert(`Welcome, ${name}!`);
+        } catch (e) {
+          console.error("❌ Error adding player:", e);
+        }
       });
-    }
-
-    window.login = login;
-  </script>
-</head>
-<body>
-  <div id="login">
-    <h2>Enter your name to join</h2>
-    <input type="text" id="name" placeholder="Your name" />
-    <button onclick="login()">Join</button>
-  </div>
-
-  <div id="sessions" style="display:none;">
-    <h2 id="welcome"></h2>
-    <h3>Available Sessions:</h3>
-    <ul id="sessionsList"></ul>
-  </div>
-</body>
+    </script>
+  </body>
 </html>
