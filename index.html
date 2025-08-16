@@ -148,35 +148,28 @@
       }
     });
 
-    // 🔹 Admin view: show all hole cards live
-    const refreshAdminView = async () => {
-      try {
-        const sessionsSnapshot = await getDocs(collection(db, "sessions"));
-        let latestSession = null;
-        sessionsSnapshot.forEach(doc => latestSession = { id: doc.id, data: doc.data() });
-        if(!latestSession) return;
+    // 🔹 Admin & Board: real-time updates via onSnapshot
+    onSnapshot(collection(db, "sessions"), snapshot => {
+      let latestSession = null;
+      snapshot.forEach(doc => latestSession = { id: doc.id, data: doc.data() });
+      if(!latestSession) return;
 
-        const data = latestSession.data;
-        const holeCards = data.holeCards || {};
-        allHoleCardsList.innerHTML = "";
-        for(const [name, cards] of Object.entries(holeCards)) {
-          const li = document.createElement("li");
-          li.textContent = `${name}: ${cards.join(", ")}`;
-          allHoleCardsList.appendChild(li);
-        }
+      const data = latestSession.data;
 
-        // Only update board inputs if not focused
-        if(!flopInput.matches(":focus")) flopInput.value = data.board?.flop.join(", ") || "";
-        if(!turnInput.matches(":focus")) turnInput.value = data.board?.turn || "";
-        if(!riverInput.matches(":focus")) riverInput.value = data.board?.river || "";
-
-      } catch(e) {
-        console.error("❌ Error refreshing admin view:", e);
+      // Update hole cards
+      const holeCards = data.holeCards || {};
+      allHoleCardsList.innerHTML = "";
+      for(const [name, cards] of Object.entries(holeCards)) {
+        const li = document.createElement("li");
+        li.textContent = `${name}: ${cards.join(", ")}`;
+        allHoleCardsList.appendChild(li);
       }
-    };
 
-    // Refresh admin view every 1 second
-    setInterval(refreshAdminView, 1000);
+      // Update board inputs only if user is not actively typing
+      if(document.activeElement !== flopInput) flopInput.value = data.board?.flop.join(", ") || "";
+      if(document.activeElement !== turnInput) turnInput.value = data.board?.turn || "";
+      if(document.activeElement !== riverInput) riverInput.value = data.board?.river || "";
+    });
 
     // 🔹 Submit board (flop/turn/river)
     submitBoardBtn.addEventListener("click", async () => {
