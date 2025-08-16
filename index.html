@@ -3,174 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <title>Jojo Poker</title>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, doc, setDoc, updateDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-import { evalHand } from "https://cdn.jsdelivr.net/npm/poker-evaluator@2.0.1/dist/poker-evaluator.min.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
-  authDomain: "jojo-pokler.firebaseapp.com",
-  projectId: "jojo-pokler",
-  storageBucket: "jojo-pokler.firebasestorage.app",
-  messagingSenderId: "963260398028",
-  appId: "1:963260398028:web:ce28df14ea78042e968569"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// HTML Elements
-const nameInput = document.getElementById("nameInput");
-const joinBtn = document.getElementById("joinBtn");
-const playersList = document.getElementById("players");
-const holeCardsDiv = document.getElementById("holeCardsDiv");
-const card1Input = document.getElementById("card1");
-const card2Input = document.getElementById("card2");
-const submitHoleBtn = document.getElementById("submitHoleBtn");
-
-const adminDiv = document.getElementById("adminDiv");
-const allHoleCardsList = document.getElementById("allHoleCardsList");
-const flopInputs = [
-  document.getElementById("flop1Input"),
-  document.getElementById("flop2Input"),
-  document.getElementById("flop3Input")
-];
-const turnInput = document.getElementById("turnInput");
-const riverInput = document.getElementById("riverInput");
-const submitBoardBtn = document.getElementById("submitBoardBtn");
-const resetBoardBtn = document.getElementById("resetBoardBtn");
-
-let playerName = "";
-const sessionDoc = doc(db, "sessions", "current");
-
-// -------------------- Join Lobby --------------------
-joinBtn.addEventListener("click", async () => {
-  const name = nameInput.value.trim();
-  if (!name) return alert("Enter your name!");
-  playerName = name;
-
-  try {
-    const sessionSnap = await getDoc(sessionDoc);
-    let sessionData = sessionSnap.exists() ? sessionSnap.data() : {};
-    const players = sessionData.players || [];
-    if (!players.includes(name)) players.push(name);
-
-    await setDoc(sessionDoc, { 
-      players, 
-      holeCards: sessionData.holeCards || {}, 
-      board: sessionData.board || { flop: ["", "", ""], turn: "", river: "" },
-      status: sessionData.status || "waiting"
-    });
-
-    holeCardsDiv.style.display = "block";
-    adminDiv.style.display = "block";
-    alert(`✅ Joined lobby as ${name}`);
-  } catch(e) {
-    console.error("Error joining lobby:", e);
-    alert("❌ Failed to join lobby. Check console for errors.");
-  }
-});
-
-// -------------------- Live updates --------------------
-onSnapshot(sessionDoc, docSnap => {
-  if (!docSnap.exists()) return;
-  const data = docSnap.data();
-
-  // Players list
-  playersList.innerHTML = "";
-  (data.players || []).forEach(name => {
-    const li = document.createElement("li");
-    li.textContent = name;
-    playersList.appendChild(li);
-  });
-
-  // Hole cards admin view
-  const holeCards = data.holeCards || {};
-  allHoleCardsList.innerHTML = "";
-  const boardCards = [...(data.board?.flop || []), data.board?.turn, data.board?.river].filter(Boolean);
-
-  for (const [name, cards] of Object.entries(holeCards)) {
-    const li = document.createElement("li");
-    li.textContent = `${name}: ${cards.join(", ")}`;
-    try {
-      const combined = [...cards, ...boardCards];
-      const evalResult = evalHand(combined.map(c => c.toUpperCase()));
-      li.textContent += ` | Hand Rank: ${evalResult.name}`;
-    } catch(e) {
-      li.textContent += ` | Hand Rank: N/A`;
-    }
-    allHoleCardsList.appendChild(li);
-  }
-
-  // Update board inputs
-  data.board?.flop?.forEach((card, i) => {
-    if (flopInputs[i].value !== card && document.activeElement !== flopInputs[i]) {
-      flopInputs[i].value = card;
-    }
-  });
-  if (turnInput.value !== data.board?.turn && document.activeElement !== turnInput) {
-    turnInput.value = data.board?.turn || "";
-  }
-  if (riverInput.value !== data.board?.river && document.activeElement !== riverInput) {
-    riverInput.value = data.board?.river || "";
-  }
-});
-
-// -------------------- Submit Hole Cards --------------------
-submitHoleBtn.addEventListener("click", async () => {
-  const c1 = card1Input.value.trim();
-  const c2 = card2Input.value.trim();
-  if (!c1 || !c2) return alert("Enter both cards!");
-  try {
-    const sessionSnap = await getDoc(sessionDoc);
-    if (!sessionSnap.exists()) return alert("No session found!");
-    const sessionData = sessionSnap.data();
-    const newHoleCards = { ...(sessionData.holeCards || {}) };
-    newHoleCards[playerName] = [c1, c2];
-    await updateDoc(sessionDoc, { holeCards: newHoleCards });
-    alert("✅ Hole cards submitted!");
-  } catch(e) {
-    console.error("Error submitting hole cards:", e);
-  }
-});
-
-// -------------------- Board --------------------
-submitBoardBtn.addEventListener("click", async () => {
-  try {
-    const sessionSnap = await getDoc(sessionDoc);
-    if (!sessionSnap.exists()) return;
-    const sessionData = sessionSnap.data();
-    const flopValues = flopInputs.map(input => input.value.trim());
-    await updateDoc(sessionDoc, {
-      board: {
-        flop: flopValues,
-        turn: turnInput.value.trim(),
-        river: riverInput.value.trim()
-      }
-    });
-    alert("✅ Board updated!");
-  } catch(e) {
-    console.error("Error updating board:", e);
-  }
-});
-
-resetBoardBtn.addEventListener("click", async () => {
-  try {
-    const sessionSnap = await getDoc(sessionDoc);
-    if (!sessionSnap.exists()) return;
-    await updateDoc(sessionDoc, {
-      board: { flop: ["", "", ""], turn: "", river: "" }
-    });
-    alert("✅ Board reset!");
-  } catch(e) {
-    console.error("Error resetting board:", e);
-  }
-});
-</script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/poker-evaluator@2.0.1/dist/poker-evaluator.min.js"></script>
 </head>
 <body>
 <h1>Jojo Poker Lobby</h1>
+
 <input id="nameInput" placeholder="Enter your name" />
 <button id="joinBtn">Join Lobby</button>
 
@@ -197,5 +36,140 @@ resetBoardBtn.addEventListener("click", async () => {
   <button id="submitBoardBtn">Update Board</button>
   <button id="resetBoardBtn">Reset Board</button>
 </div>
+
+<script>
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
+    authDomain: "jojo-pokler.firebaseapp.com",
+    projectId: "jojo-pokler",
+    storageBucket: "jojo-pokler.firebasestorage.app",
+    messagingSenderId: "963260398028",
+    appId: "1:963260398028:web:ce28df14ea78042e968569"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // Elements
+  const nameInput = document.getElementById("nameInput");
+  const joinBtn = document.getElementById("joinBtn");
+  const playersList = document.getElementById("players");
+  const holeCardsDiv = document.getElementById("holeCardsDiv");
+  const card1Input = document.getElementById("card1");
+  const card2Input = document.getElementById("card2");
+  const submitHoleBtn = document.getElementById("submitHoleBtn");
+  const adminDiv = document.getElementById("adminDiv");
+  const allHoleCardsList = document.getElementById("allHoleCardsList");
+  const flopInputs = [
+    document.getElementById("flop1Input"),
+    document.getElementById("flop2Input"),
+    document.getElementById("flop3Input")
+  ];
+  const turnInput = document.getElementById("turnInput");
+  const riverInput = document.getElementById("riverInput");
+  const submitBoardBtn = document.getElementById("submitBoardBtn");
+  const resetBoardBtn = document.getElementById("resetBoardBtn");
+
+  let playerName = "";
+  const sessionDoc = db.collection("sessions").doc("current");
+
+  // Join lobby
+  joinBtn.onclick = async function() {
+    const name = nameInput.value.trim();
+    if(!name) return alert("Enter your name!");
+    playerName = name;
+    try {
+      const docSnap = await sessionDoc.get();
+      let data = docSnap.exists ? docSnap.data() : {};
+      const players = data.players || [];
+      if(!players.includes(name)) players.push(name);
+      await sessionDoc.set({
+        players: players,
+        holeCards: data.holeCards || {},
+        board: data.board || { flop:["","",""], turn:"", river:"" },
+        status: data.status || "waiting"
+      });
+      holeCardsDiv.style.display = "block";
+      adminDiv.style.display = "block";
+      alert("✅ Joined lobby as "+name);
+    } catch(e) {
+      console.error("Error joining lobby:", e);
+      alert("❌ Failed to join lobby");
+    }
+  }
+
+  // Live updates
+  sessionDoc.onSnapshot(function(docSnap){
+    if(!docSnap.exists) return;
+    const data = docSnap.data();
+    // Players
+    playersList.innerHTML = "";
+    (data.players||[]).forEach(n=>{
+      const li = document.createElement("li");
+      li.textContent = n;
+      playersList.appendChild(li);
+    });
+    // Hole cards admin view
+    allHoleCardsList.innerHTML = "";
+    const boardCards = [...(data.board.flop||[]), data.board.turn, data.board.river].filter(Boolean);
+    for(const [name,cards] of Object.entries(data.holeCards||{})){
+      const li = document.createElement("li");
+      li.textContent = name+": "+cards.join(", ");
+      try{
+        const combined = [...cards,...boardCards];
+        const evalResult = PokerEvaluator.evalHand(combined.map(c=>c.toUpperCase()));
+        li.textContent += " | Hand Rank: "+evalResult.name;
+      }catch(e){
+        li.textContent += " | Hand Rank: N/A";
+      }
+      allHoleCardsList.appendChild(li);
+    }
+    // Update board inputs
+    data.board.flop.forEach((card,i)=>{
+      if(flopInputs[i].value!==card && document.activeElement!==flopInputs[i]) flopInputs[i].value = card;
+    });
+    if(turnInput.value!==data.board.turn && document.activeElement!==turnInput) turnInput.value = data.board.turn||"";
+    if(riverInput.value!==data.board.river && document.activeElement!==riverInput) riverInput.value = data.board.river||"";
+  });
+
+  // Submit hole cards
+  submitHoleBtn.onclick = async function(){
+    const c1 = card1Input.value.trim();
+    const c2 = card2Input.value.trim();
+    if(!c1||!c2) return alert("Enter both cards!");
+    try{
+      const docSnap = await sessionDoc.get();
+      if(!docSnap.exists) return alert("No session found!");
+      const data = docSnap.data();
+      const holeCards = Object.assign({}, data.holeCards);
+      holeCards[playerName] = [c1,c2];
+      await sessionDoc.update({ holeCards });
+      alert("✅ Hole cards submitted!");
+    }catch(e){ console.error(e); }
+  }
+
+  // Board update
+  submitBoardBtn.onclick = async function(){
+    try{
+      const docSnap = await sessionDoc.get();
+      if(!docSnap.exists) return;
+      const data = docSnap.data();
+      const flopValues = flopInputs.map(i=>i.value.trim());
+      await sessionDoc.update({
+        board: { flop: flopValues, turn: turnInput.value.trim(), river: riverInput.value.trim() }
+      });
+      alert("✅ Board updated!");
+    }catch(e){ console.error(e); }
+  }
+
+  resetBoardBtn.onclick = async function(){
+    try{
+      const docSnap = await sessionDoc.get();
+      if(!docSnap.exists) return;
+      await sessionDoc.update({ board:{ flop:["","",""], turn:"", river:"" } });
+      alert("✅ Board reset!");
+    }catch(e){ console.error(e); }
+  }
+</script>
 </body>
 </html>
