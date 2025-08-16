@@ -6,7 +6,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { 
-      getFirestore, collection, addDoc, getDocs, onSnapshot, doc, setDoc 
+      getFirestore, collection, addDoc, getDocs, onSnapshot, doc, setDoc, updateDoc 
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     // ✅ Firebase config
@@ -31,14 +31,22 @@
     const createSessionBtn = document.getElementById("createSessionBtn");
     const sessionList = document.getElementById("sessionList");
     const gameStatus = document.getElementById("gameStatus");
+    const holeCardsDiv = document.getElementById("holeCardsDiv");
+
+    let playerName = "";
 
     // 🔹 Join Lobby
     joinBtn.addEventListener("click", async () => {
       const name = nameInput.value.trim();
       if (!name) return alert("Enter your name!");
+      playerName = name;
+
       try {
         await addDoc(collection(db, "players"), { name });
         console.log("✅ Player joined:", name);
+
+        // Show hole card input
+        holeCardsDiv.style.display = "block";
       } catch(e) {
         console.error("❌ Error joining:", e);
       }
@@ -86,7 +94,8 @@
           createdAt: new Date(),
           status: "waiting",
           buyIn: 0,
-          moneyInHand: 0
+          moneyInHand: 0,
+          holeCards: {} // store player hole cards
         });
         console.log("✅ Session created with ID:", docRef.id);
       } catch(e) {
@@ -104,6 +113,37 @@
         sessionList.appendChild(li);
       });
     });
+
+    // 🔹 Hole Cards input
+    const submitHoleBtn = document.getElementById("submitHoleBtn");
+    const card1Input = document.getElementById("card1");
+    const card2Input = document.getElementById("card2");
+
+    submitHoleBtn.addEventListener("click", async () => {
+      const c1 = card1Input.value.trim();
+      const c2 = card2Input.value.trim();
+      if(!c1 || !c2) return alert("Enter both cards!");
+
+      try {
+        // For simplicity, we update the latest session
+        const sessionsSnapshot = await getDocs(collection(db, "sessions"));
+        let latestSession = null;
+        sessionsSnapshot.forEach(doc => latestSession = { id: doc.id, data: doc.data() }); 
+
+        if(!latestSession) return alert("No session found!");
+
+        const sessionRef = doc(db, "sessions", latestSession.id);
+        const newHoleCards = latestSession.data.holeCards || {};
+        newHoleCards[playerName] = [c1, c2];
+
+        await updateDoc(sessionRef, { holeCards: newHoleCards });
+        console.log("✅ Hole cards submitted!");
+        alert("Hole cards submitted!");
+      } catch(e) {
+        console.error("❌ Error submitting hole cards:", e);
+      }
+    });
+
   </script>
 </head>
 <body>
@@ -121,5 +161,12 @@
   <ul id="sessionList"></ul>
 
   <p id="gameStatus"></p>
+
+  <div id="holeCardsDiv" style="display:none;">
+    <h2>Your Hole Cards</h2>
+    <input id="card1" placeholder="Card 1 (e.g., Ah)" />
+    <input id="card2" placeholder="Card 2 (e.g., Kd)" />
+    <button id="submitHoleBtn">Submit Hole Cards</button>
+  </div>
 </body>
 </html>
