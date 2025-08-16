@@ -6,13 +6,21 @@
   </head>
   <body>
     <h1>Poker App</h1>
+
+    <!-- Join Form -->
     <input id="playerName" placeholder="Enter your name" />
     <button id="joinBtn">Join</button>
+
+    <!-- Player List -->
+    <h2>Players in Lobby:</h2>
+    <ul id="playersList"></ul>
 
     <script type="module">
       // Import Firebase
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-      import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+      import { 
+        getFirestore, collection, addDoc, onSnapshot 
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
       // Your Firebase config
       const firebaseConfig = {
@@ -42,11 +50,22 @@
             name: name,
             joinedAt: new Date()
           });
-          console.log("✅ Player added with ID:", docRef.id);
+          console.log("✅ Player added:", docRef.id);
           alert(`Welcome, ${name}!`);
         } catch (e) {
           console.error("❌ Error adding player:", e);
         }
+      });
+
+      // Listen for players live
+      const playersList = document.getElementById("playersList");
+      onSnapshot(collection(db, "players"), (snapshot) => {
+        playersList.innerHTML = "";
+        snapshot.forEach((doc) => {
+          const li = document.createElement("li");
+          li.textContent = doc.data().name;
+          playersList.appendChild(li);
+        });
       });
     </script>
   </body>
