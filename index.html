@@ -1,72 +1,85 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>Poker App</title>
-    <meta charset="UTF-8" />
-  </head>
-  <body>
-    <h1>Poker App</h1>
+<head>
+  <meta charset="UTF-8">
+  <title>Game Lobby</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    <!-- Join Form -->
-    <input id="playerName" placeholder="Enter your name" />
-    <button id="joinBtn">Join</button>
+    // ✅ Your Firebase config
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
 
-    <!-- Player List -->
-    <h2>Players in Lobby:</h2>
-    <ul id="playersList"></ul>
+    // ✅ Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-    <script type="module">
-      // Import Firebase
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-      import { 
-        getFirestore, collection, addDoc, onSnapshot 
-      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    // 🔹 Join Lobby
+    const joinBtn = document.getElementById("joinBtn");
+    const nameInput = document.getElementById("nameInput");
+    const playersList = document.getElementById("players");
 
-      // Your Firebase config
-      const firebaseConfig = {
-        apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
-        authDomain: "jojo-pokler.firebaseapp.com",
-        projectId: "jojo-pokler",
-        storageBucket: "jojo-pokler.firebasestorage.app",
-        messagingSenderId: "963260398028",
-        appId: "1:963260398028:web:ce28df14ea78042e968569",
-        measurementId: "G-V78WWQ0VZQ"
-      };
+    joinBtn.addEventListener("click", async () => {
+      const name = nameInput.value.trim();
+      if (!name) return alert("Enter your name!");
 
-      // Init Firebase
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
+      try {
+        await addDoc(collection(db, "players"), { name });
+        console.log("✅ Player joined:", name);
+      } catch (e) {
+        console.error("❌ Error joining:", e);
+      }
+    });
 
-      // Join button logic
-      document.getElementById("joinBtn").addEventListener("click", async () => {
-        const name = document.getElementById("playerName").value.trim();
-        if (!name) {
-          alert("Enter a name first!");
-          return;
-        }
-
-        try {
-          const docRef = await addDoc(collection(db, "players"), {
-            name: name,
-            joinedAt: new Date()
-          });
-          console.log("✅ Player added:", docRef.id);
-          alert(`Welcome, ${name}!`);
-        } catch (e) {
-          console.error("❌ Error adding player:", e);
-        }
+    // 🔹 Listen for players
+    onSnapshot(collection(db, "players"), (snapshot) => {
+      playersList.innerHTML = "";
+      snapshot.forEach((doc) => {
+        const li = document.createElement("li");
+        li.textContent = doc.data().name;
+        playersList.appendChild(li);
       });
+    });
 
-      // Listen for players live
-      const playersList = document.getElementById("playersList");
-      onSnapshot(collection(db, "players"), (snapshot) => {
-        playersList.innerHTML = "";
-        snapshot.forEach((doc) => {
-          const li = document.createElement("li");
-          li.textContent = doc.data().name;
-          playersList.appendChild(li);
-        });
-      });
-    </script>
-  </body>
+    // 🔹 Game State
+    const gameRef = doc(db, "game", "state");
+    const startBtn = document.getElementById("startBtn");
+    const gameStatus = document.getElementById("gameStatus");
+
+    startBtn.addEventListener("click", async () => {
+      try {
+        await setDoc(gameRef, { status: "started" });
+        console.log("✅ Game started!");
+      } catch (e) {
+        console.error("❌ Error starting game:", e);
+      }
+    });
+
+    onSnapshot(gameRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const status = docSnap.data().status;
+        gameStatus.innerText = `Game Status: ${status}`;
+        console.log("🎮 Game status updated:", status);
+      }
+    });
+  </script>
+</head>
+<body>
+  <h1>Game Lobby</h1>
+  <input id="nameInput" placeholder="Enter your name" />
+  <button id="joinBtn">Join Lobby</button>
+
+  <h2>Players in Lobby:</h2>
+  <ul id="players"></ul>
+
+  <button id="startBtn">Start Game</button>
+  <p id="gameStatus"></p>
+</body>
 </html>
