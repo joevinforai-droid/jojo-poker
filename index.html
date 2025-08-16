@@ -22,7 +22,6 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Elements
     const nameInput = document.getElementById("nameInput");
     const joinBtn = document.getElementById("joinBtn");
     const playersList = document.getElementById("players");
@@ -46,19 +45,16 @@
     const resetBoardBtn = document.getElementById("resetBoardBtn");
 
     let playerName = "";
-    const sessionDoc = doc(db, "sessions", "current"); // single session doc
+    const sessionDoc = doc(db, "sessions", "current");
 
-    // -------------------- Join Lobby --------------------
     joinBtn.addEventListener("click", async () => {
       const name = nameInput.value.trim();
       if (!name) return alert("Enter your name!");
       playerName = name;
-      console.log("Join clicked! Name:", name);
 
       try {
         const sessionSnap = await getDoc(sessionDoc);
-        let sessionData = {};
-        if (sessionSnap.exists()) sessionData = sessionSnap.data();
+        let sessionData = sessionSnap.exists() ? sessionSnap.data() : {};
         const players = sessionData.players || [];
         if (!players.includes(name)) players.push(name);
 
@@ -75,12 +71,10 @@
       }
     });
 
-    // -------------------- Live Updates --------------------
     onSnapshot(sessionDoc, docSnap => {
       if (!docSnap.exists()) return;
       const data = docSnap.data();
 
-      // Players list
       playersList.innerHTML = "";
       (data.players || []).forEach(name => {
         const li = document.createElement("li");
@@ -90,7 +84,6 @@
 
       gameStatus.innerText = `Game Status: ${data.status || "waiting"}`;
 
-      // Hole cards admin view + rank
       const holeCards = data.holeCards || {};
       allHoleCardsList.innerHTML = "";
       const boardCards = [...(data.board?.flop || []), data.board?.turn, data.board?.river].filter(Boolean);
@@ -98,7 +91,6 @@
       for (const [name, cards] of Object.entries(holeCards)) {
         const li = document.createElement("li");
         li.textContent = `${name}: ${cards.join(", ")}`;
-
         try {
           const combined = [...cards, ...boardCards];
           const evalResult = evalHand(combined.map(c => c.toUpperCase()));
@@ -106,11 +98,9 @@
         } catch(e) {
           li.textContent += ` | Hand Rank: N/A`;
         }
-
         allHoleCardsList.appendChild(li);
       }
 
-      // Board inputs
       data.board?.flop?.forEach((card, i) => {
         if (flopInputs[i].value !== card && document.activeElement !== flopInputs[i]) {
           flopInputs[i].value = card;
@@ -124,11 +114,10 @@
       }
     });
 
-    // -------------------- Start Game --------------------
     startBtn.addEventListener("click", async () => {
       try {
         const sessionSnap = await getDoc(sessionDoc);
-        let sessionData = sessionSnap.exists() ? sessionSnap.data() : {};
+        const sessionData = sessionSnap.exists() ? sessionSnap.data() : {};
         await setDoc(sessionDoc, { 
           ...sessionData, 
           status: "started" 
@@ -139,7 +128,6 @@
       }
     });
 
-    // -------------------- Submit Hole Cards --------------------
     submitHoleBtn.addEventListener("click", async () => {
       const c1 = card1Input.value.trim();
       const c2 = card2Input.value.trim();
@@ -148,7 +136,7 @@
         const sessionSnap = await getDoc(sessionDoc);
         if (!sessionSnap.exists()) return alert("No session found!");
         const sessionData = sessionSnap.data();
-        const newHoleCards = sessionData.holeCards || {};
+        const newHoleCards = { ...(sessionData.holeCards || {}) };
         newHoleCards[playerName] = [c1, c2];
         await updateDoc(sessionDoc, { holeCards: newHoleCards });
         alert("✅ Hole cards submitted!");
@@ -157,7 +145,6 @@
       }
     });
 
-    // -------------------- Submit Board --------------------
     submitBoardBtn.addEventListener("click", async () => {
       try {
         const sessionSnap = await getDoc(sessionDoc);
@@ -177,7 +164,6 @@
       }
     });
 
-    // -------------------- Reset Board --------------------
     resetBoardBtn.addEventListener("click", async () => {
       try {
         const sessionSnap = await getDoc(sessionDoc);
@@ -190,7 +176,6 @@
         console.error("❌ Error resetting board:", e);
       }
     });
-
   </script>
 </head>
 <body>
