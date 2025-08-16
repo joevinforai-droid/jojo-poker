@@ -6,7 +6,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { 
-      getFirestore, collection, doc, setDoc, updateDoc, getDoc, onSnapshot 
+      getFirestore, doc, setDoc, updateDoc, getDoc, onSnapshot 
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
     import { evalHand } from "https://cdn.jsdelivr.net/npm/poker-evaluator@2.0.1/dist/poker-evaluator.min.js";
 
@@ -48,11 +48,12 @@
     let playerName = "";
     const sessionDoc = doc(db, "sessions", "current"); // single session doc
 
-    // Join Lobby
+    // -------------------- Join Lobby --------------------
     joinBtn.addEventListener("click", async () => {
       const name = nameInput.value.trim();
       if (!name) return alert("Enter your name!");
       playerName = name;
+      console.log("Join clicked! Name:", name);
 
       try {
         const sessionSnap = await getDoc(sessionDoc);
@@ -68,25 +69,28 @@
           board: sessionData.board || { flop: ["", "", ""], turn: "", river: "" }
         });
         holeCardsDiv.style.display = "block";
-        console.log("✅ Player joined:", name);
+        alert(`✅ Joined lobby as ${name}`);
       } catch(e) {
         console.error("❌ Error joining:", e);
       }
     });
 
-    // Live players list
+    // -------------------- Live Updates --------------------
     onSnapshot(sessionDoc, docSnap => {
       if (!docSnap.exists()) return;
       const data = docSnap.data();
+
+      // Players list
       playersList.innerHTML = "";
       (data.players || []).forEach(name => {
         const li = document.createElement("li");
         li.textContent = name;
         playersList.appendChild(li);
       });
+
       gameStatus.innerText = `Game Status: ${data.status || "waiting"}`;
 
-      // Hole cards admin view + win probability
+      // Hole cards admin view + rank
       const holeCards = data.holeCards || {};
       allHoleCardsList.innerHTML = "";
       const boardCards = [...(data.board?.flop || []), data.board?.turn, data.board?.river].filter(Boolean);
@@ -95,8 +99,6 @@
         const li = document.createElement("li");
         li.textContent = `${name}: ${cards.join(", ")}`;
 
-        // Calculate win probability using simple Monte Carlo simulation (basic)
-        // For now we just show evaluation of current hand vs board
         try {
           const combined = [...cards, ...boardCards];
           const evalResult = evalHand(combined.map(c => c.toUpperCase()));
@@ -108,7 +110,7 @@
         allHoleCardsList.appendChild(li);
       }
 
-      // Board inputs only overwrite if different and not typing
+      // Board inputs
       data.board?.flop?.forEach((card, i) => {
         if (flopInputs[i].value !== card && document.activeElement !== flopInputs[i]) {
           flopInputs[i].value = card;
@@ -122,7 +124,7 @@
       }
     });
 
-    // Start Game
+    // -------------------- Start Game --------------------
     startBtn.addEventListener("click", async () => {
       try {
         const sessionSnap = await getDoc(sessionDoc);
@@ -137,7 +139,7 @@
       }
     });
 
-    // Submit Hole Cards
+    // -------------------- Submit Hole Cards --------------------
     submitHoleBtn.addEventListener("click", async () => {
       const c1 = card1Input.value.trim();
       const c2 = card2Input.value.trim();
@@ -149,14 +151,13 @@
         const newHoleCards = sessionData.holeCards || {};
         newHoleCards[playerName] = [c1, c2];
         await updateDoc(sessionDoc, { holeCards: newHoleCards });
-        console.log("✅ Hole cards submitted!");
-        alert("Hole cards submitted!");
+        alert("✅ Hole cards submitted!");
       } catch(e) {
         console.error("❌ Error submitting hole cards:", e);
       }
     });
 
-    // Submit Board
+    // -------------------- Submit Board --------------------
     submitBoardBtn.addEventListener("click", async () => {
       try {
         const sessionSnap = await getDoc(sessionDoc);
@@ -176,7 +177,7 @@
       }
     });
 
-    // Reset Board
+    // -------------------- Reset Board --------------------
     resetBoardBtn.addEventListener("click", async () => {
       try {
         const sessionSnap = await getDoc(sessionDoc);
