@@ -38,7 +38,7 @@
 </div>
 
 <script>
-  // Firebase config
+  // ---------- Firebase ----------
   const firebaseConfig = {
     apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
     authDomain: "jojo-pokler.firebaseapp.com",
@@ -50,7 +50,7 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
-  // Elements
+  // ---------- Elements ----------
   const nameInput = document.getElementById("nameInput");
   const joinBtn = document.getElementById("joinBtn");
   const playersList = document.getElementById("players");
@@ -73,7 +73,7 @@
   let playerName = "";
   const sessionDoc = db.collection("sessions").doc("current");
 
-  // Join lobby
+  // ---------- Join Lobby ----------
   joinBtn.onclick = async function() {
     const name = nameInput.value.trim();
     if(!name) return alert("Enter your name!");
@@ -83,25 +83,28 @@
       let data = docSnap.exists ? docSnap.data() : {};
       const players = data.players || [];
       if(!players.includes(name)) players.push(name);
+
       await sessionDoc.set({
         players: players,
         holeCards: data.holeCards || {},
         board: data.board || { flop:["","",""], turn:"", river:"" },
-        status: data.status || "waiting"
+        status: "waiting"
       });
+
       holeCardsDiv.style.display = "block";
       adminDiv.style.display = "block";
-      alert("✅ Joined lobby as "+name);
+      alert("✅ Joined lobby as " + name);
     } catch(e) {
       console.error("Error joining lobby:", e);
       alert("❌ Failed to join lobby");
     }
   }
 
-  // Live updates
+  // ---------- Live Updates ----------
   sessionDoc.onSnapshot(function(docSnap){
     if(!docSnap.exists) return;
     const data = docSnap.data();
+
     // Players
     playersList.innerHTML = "";
     (data.players||[]).forEach(n=>{
@@ -109,7 +112,8 @@
       li.textContent = n;
       playersList.appendChild(li);
     });
-    // Hole cards admin view
+
+    // Hole cards
     allHoleCardsList.innerHTML = "";
     const boardCards = [...(data.board.flop||[]), data.board.turn, data.board.river].filter(Boolean);
     for(const [name,cards] of Object.entries(data.holeCards||{})){
@@ -124,7 +128,8 @@
       }
       allHoleCardsList.appendChild(li);
     }
-    // Update board inputs
+
+    // Board inputs
     data.board.flop.forEach((card,i)=>{
       if(flopInputs[i].value!==card && document.activeElement!==flopInputs[i]) flopInputs[i].value = card;
     });
@@ -132,7 +137,7 @@
     if(riverInput.value!==data.board.river && document.activeElement!==riverInput) riverInput.value = data.board.river||"";
   });
 
-  // Submit hole cards
+  // ---------- Submit Hole Cards ----------
   submitHoleBtn.onclick = async function(){
     const c1 = card1Input.value.trim();
     const c2 = card2Input.value.trim();
@@ -148,7 +153,7 @@
     }catch(e){ console.error(e); }
   }
 
-  // Board update
+  // ---------- Board Update ----------
   submitBoardBtn.onclick = async function(){
     try{
       const docSnap = await sessionDoc.get();
