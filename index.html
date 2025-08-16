@@ -8,8 +8,8 @@
     import { 
       getFirestore, collection, doc, setDoc, updateDoc, getDoc, onSnapshot 
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { evalHand } from "https://cdn.jsdelivr.net/npm/poker-evaluator@2.0.1/dist/poker-evaluator.min.js";
 
-    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
       authDomain: "jojo-pokler.firebaseapp.com",
@@ -86,12 +86,25 @@
       });
       gameStatus.innerText = `Game Status: ${data.status || "waiting"}`;
 
-      // Hole cards admin view
+      // Hole cards admin view + win probability
       const holeCards = data.holeCards || {};
       allHoleCardsList.innerHTML = "";
+      const boardCards = [...(data.board?.flop || []), data.board?.turn, data.board?.river].filter(Boolean);
+
       for (const [name, cards] of Object.entries(holeCards)) {
         const li = document.createElement("li");
         li.textContent = `${name}: ${cards.join(", ")}`;
+
+        // Calculate win probability using simple Monte Carlo simulation (basic)
+        // For now we just show evaluation of current hand vs board
+        try {
+          const combined = [...cards, ...boardCards];
+          const evalResult = evalHand(combined.map(c => c.toUpperCase()));
+          li.textContent += ` | Hand Rank: ${evalResult.name}`;
+        } catch(e) {
+          li.textContent += ` | Hand Rank: N/A`;
+        }
+
         allHoleCardsList.appendChild(li);
       }
 
@@ -168,7 +181,6 @@
       try {
         const sessionSnap = await getDoc(sessionDoc);
         if (!sessionSnap.exists()) return;
-        const sessionData = sessionSnap.data();
         await updateDoc(sessionDoc, {
           board: { flop: ["", "", ""], turn: "", river: "" }
         });
@@ -189,7 +201,6 @@
   <ul id="players"></ul>
 
   <button id="startBtn">Start Game</button>
-
   <p id="gameStatus"></p>
 
   <div id="holeCardsDiv" style="display:block;">
