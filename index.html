@@ -1,117 +1,113 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Game Lobby</title>
+  <title>Jojo Poker</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { 
+      getFirestore, collection, addDoc, getDocs, onSnapshot, doc, setDoc 
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // ✅ Your Firebase config
+    // ✅ Firebase config
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
+      authDomain: "jojo-pokler.firebaseapp.com",
+      projectId: "jojo-pokler",
+      storageBucket: "jojo-pokler.firebasestorage.app",
+      messagingSenderId: "963260398028",
+      appId: "1:963260398028:web:ce28df14ea78042e968569"
     };
 
     // ✅ Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 🔹 Join Lobby
-    const joinBtn = document.getElementById("joinBtn");
+    // 🔹 Elements
     const nameInput = document.getElementById("nameInput");
+    const joinBtn = document.getElementById("joinBtn");
     const playersList = document.getElementById("players");
+    const startBtn = document.getElementById("startBtn");
+    const createSessionBtn = document.getElementById("createSessionBtn");
+    const sessionList = document.getElementById("sessionList");
+    const gameStatus = document.getElementById("gameStatus");
 
+    // 🔹 Join Lobby
     joinBtn.addEventListener("click", async () => {
       const name = nameInput.value.trim();
       if (!name) return alert("Enter your name!");
-
       try {
         await addDoc(collection(db, "players"), { name });
         console.log("✅ Player joined:", name);
-      } catch (e) {
+      } catch(e) {
         console.error("❌ Error joining:", e);
       }
     });
 
-    // 🔹 Listen for players
-    onSnapshot(collection(db, "players"), (snapshot) => {
+    // 🔹 Live players list
+    onSnapshot(collection(db, "players"), snapshot => {
       playersList.innerHTML = "";
-      snapshot.forEach((doc) => {
+      snapshot.forEach(doc => {
         const li = document.createElement("li");
         li.textContent = doc.data().name;
         playersList.appendChild(li);
       });
     });
 
-    // 🔹 Game State
+    // 🔹 Start Game button
     const gameRef = doc(db, "game", "state");
-    const startBtn = document.getElementById("startBtn");
-    const gameStatus = document.getElementById("gameStatus");
-
     startBtn.addEventListener("click", async () => {
       try {
         await setDoc(gameRef, { status: "started" });
         console.log("✅ Game started!");
-      } catch (e) {
+      } catch(e) {
         console.error("❌ Error starting game:", e);
       }
     });
 
-    onSnapshot(gameRef, (docSnap) => {
-      if (docSnap.exists()) {
+    onSnapshot(gameRef, docSnap => {
+      if(docSnap.exists()) {
         const status = docSnap.data().status;
         gameStatus.innerText = `Game Status: ${status}`;
-        console.log("🎮 Game status updated:", status);
       }
     });
-    const createSessionBtn = document.getElementById("createSessionBtn");
-const sessionList = document.getElementById("sessionList");
 
-createSessionBtn.addEventListener("click", async () => {
-  try {
-    // Get all current players in lobby
-    const playersSnapshot = await getDocs(collection(db, "players"));
-    const players = [];
-    playersSnapshot.forEach(doc => players.push(doc.data().name));
+    // 🔹 Create Poker Session
+    createSessionBtn.addEventListener("click", async () => {
+      try {
+        const playersSnapshot = await getDocs(collection(db, "players"));
+        const players = [];
+        playersSnapshot.forEach(doc => players.push(doc.data().name));
+        if(players.length === 0) return alert("No players to start a session!");
 
-    if (players.length === 0) return alert("No players to start a session!");
-
-    // Create session in Firestore
-    const docRef = await addDoc(collection(db, "sessions"), {
-      name: `Session ${new Date().toLocaleTimeString()}`,
-      players: players,
-      createdAt: new Date(),
-      status: "waiting", // waiting, in-progress, finished
-      buyIn: 0,
-      moneyInHand: 0
+        const docRef = await addDoc(collection(db, "sessions"), {
+          name: `Session ${new Date().toLocaleTimeString()}`,
+          players: players,
+          createdAt: new Date(),
+          status: "waiting",
+          buyIn: 0,
+          moneyInHand: 0
+        });
+        console.log("✅ Session created with ID:", docRef.id);
+      } catch(e) {
+        console.error("❌ Error creating session:", e);
+      }
     });
 
-    console.log("✅ Session created with ID:", docRef.id);
-  } catch (e) {
-    console.error("❌ Error creating session:", e);
-  }
-});
-
-// Listen for live sessions
-onSnapshot(collection(db, "sessions"), snapshot => {
-  sessionList.innerHTML = "";
-  snapshot.forEach(doc => {
-    const s = doc.data();
-    const li = document.createElement("li");
-    li.textContent = `${s.name} | Players: ${s.players.join(", ")} | Status: ${s.status}`;
-    sessionList.appendChild(li);
-  });
-});
-
+    // 🔹 Live session list
+    onSnapshot(collection(db, "sessions"), snapshot => {
+      sessionList.innerHTML = "";
+      snapshot.forEach(doc => {
+        const s = doc.data();
+        const li = document.createElement("li");
+        li.textContent = `${s.name} | Players: ${s.players.join(", ")} | Status: ${s.status}`;
+        sessionList.appendChild(li);
+      });
+    });
   </script>
 </head>
 <body>
-  <h1>Game Lobby</h1>
+  <h1>Jojo Poker Lobby</h1>
   <input id="nameInput" placeholder="Enter your name" />
   <button id="joinBtn">Join Lobby</button>
 
@@ -119,9 +115,11 @@ onSnapshot(collection(db, "sessions"), snapshot => {
   <ul id="players"></ul>
 
   <button id="startBtn">Start Game</button>
-  <p id="gameStatus"></p>
   <button id="createSessionBtn">Create Poker Session</button>
-<ul id="sessionList"></ul>
 
+  <h2>Active Sessions:</h2>
+  <ul id="sessionList"></ul>
+
+  <p id="gameStatus"></p>
 </body>
 </html>
