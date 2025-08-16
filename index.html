@@ -9,7 +9,7 @@
       getFirestore, collection, addDoc, getDocs, onSnapshot, doc, setDoc, updateDoc 
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // ✅ Firebase config
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
       authDomain: "jojo-pokler.firebaseapp.com",
@@ -19,11 +19,10 @@
       appId: "1:963260398028:web:ce28df14ea78042e968569"
     };
 
-    // ✅ Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 🔹 Elements
+    // Elements
     const nameInput = document.getElementById("nameInput");
     const joinBtn = document.getElementById("joinBtn");
     const playersList = document.getElementById("players");
@@ -38,19 +37,22 @@
 
     const adminDiv = document.getElementById("adminDiv");
     const allHoleCardsList = document.getElementById("allHoleCardsList");
-    const flopInput = document.getElementById("flopInput");
+    const flopInputs = [
+      document.getElementById("flop1Input"),
+      document.getElementById("flop2Input"),
+      document.getElementById("flop3Input")
+    ];
     const turnInput = document.getElementById("turnInput");
     const riverInput = document.getElementById("riverInput");
     const submitBoardBtn = document.getElementById("submitBoardBtn");
 
     let playerName = "";
 
-    // 🔹 Join Lobby
+    // Join Lobby
     joinBtn.addEventListener("click", async () => {
       const name = nameInput.value.trim();
       if (!name) return alert("Enter your name!");
       playerName = name;
-
       try {
         await addDoc(collection(db, "players"), { name });
         console.log("✅ Player joined:", name);
@@ -60,7 +62,7 @@
       }
     });
 
-    // 🔹 Live players list
+    // Live players list
     onSnapshot(collection(db, "players"), snapshot => {
       playersList.innerHTML = "";
       snapshot.forEach(doc => {
@@ -70,7 +72,7 @@
       });
     });
 
-    // 🔹 Start Game button
+    // Start Game
     const gameRef = doc(db, "game", "state");
     startBtn.addEventListener("click", async () => {
       try {
@@ -88,14 +90,13 @@
       }
     });
 
-    // 🔹 Create Poker Session
+    // Create Poker Session
     createSessionBtn.addEventListener("click", async () => {
       try {
         const playersSnapshot = await getDocs(collection(db, "players"));
         const players = [];
         playersSnapshot.forEach(doc => players.push(doc.data().name));
         if(players.length === 0) return alert("No players to start a session!");
-
         const docRef = await addDoc(collection(db, "sessions"), {
           name: `Session ${new Date().toLocaleTimeString()}`,
           players: players,
@@ -104,7 +105,7 @@
           buyIn: 0,
           moneyInHand: 0,
           holeCards: {},
-          board: { flop: [], turn: "", river: "" }
+          board: { flop: ["", "", ""], turn: "", river: "" }
         });
         console.log("✅ Session created with ID:", docRef.id);
       } catch(e) {
@@ -112,7 +113,7 @@
       }
     });
 
-    // 🔹 Live session list
+    // Live session list
     onSnapshot(collection(db, "sessions"), snapshot => {
       sessionList.innerHTML = "";
       snapshot.forEach(doc => {
@@ -123,23 +124,19 @@
       });
     });
 
-    // 🔹 Submit Hole Cards
+    // Submit Hole Cards
     submitHoleBtn.addEventListener("click", async () => {
       const c1 = card1Input.value.trim();
       const c2 = card2Input.value.trim();
       if(!c1 || !c2) return alert("Enter both cards!");
-
       try {
         const sessionsSnapshot = await getDocs(collection(db, "sessions"));
         let latestSession = null;
-        sessionsSnapshot.forEach(doc => latestSession = { id: doc.id, data: doc.data() }); 
-
+        sessionsSnapshot.forEach(doc => latestSession = { id: doc.id, data: doc.data() });
         if(!latestSession) return alert("No session found!");
-
         const sessionRef = doc(db, "sessions", latestSession.id);
         const newHoleCards = latestSession.data.holeCards || {};
         newHoleCards[playerName] = [c1, c2];
-
         await updateDoc(sessionRef, { holeCards: newHoleCards });
         console.log("✅ Hole cards submitted!");
         alert("Hole cards submitted!");
@@ -148,7 +145,7 @@
       }
     });
 
-    // 🔹 Admin & Board: real-time updates via onSnapshot
+    // Admin / Board live updates
     onSnapshot(collection(db, "sessions"), snapshot => {
       let latestSession = null;
       snapshot.forEach(doc => latestSession = { id: doc.id, data: doc.data() });
@@ -156,7 +153,7 @@
 
       const data = latestSession.data;
 
-      // Update hole cards
+      // Hole cards
       const holeCards = data.holeCards || {};
       allHoleCardsList.innerHTML = "";
       for(const [name, cards] of Object.entries(holeCards)) {
@@ -165,32 +162,39 @@
         allHoleCardsList.appendChild(li);
       }
 
-      // Update board inputs only if user is not actively typing
-      if(document.activeElement !== flopInput) flopInput.value = data.board?.flop.join(", ") || "";
-      if(document.activeElement !== turnInput) turnInput.value = data.board?.turn || "";
-      if(document.activeElement !== riverInput) riverInput.value = data.board?.river || "";
+      // Board inputs: only update if value changed and user not typing
+      data.board?.flop?.forEach((card, i) => {
+        if (flopInputs[i].value !== card && document.activeElement !== flopInputs[i]) {
+          flopInputs[i].value = card;
+        }
+      });
+      if (turnInput.value !== data.board?.turn && document.activeElement !== turnInput) {
+        turnInput.value = data.board?.turn || "";
+      }
+      if (riverInput.value !== data.board?.river && document.activeElement !== riverInput) {
+        riverInput.value = data.board?.river || "";
+      }
     });
 
-    // 🔹 Submit board (flop/turn/river)
+    // Submit Board
     submitBoardBtn.addEventListener("click", async () => {
       try {
         const sessionsSnapshot = await getDocs(collection(db, "sessions"));
         let latestSession = null;
         sessionsSnapshot.forEach(doc => latestSession = { id: doc.id, data: doc.data() });
         if(!latestSession) return alert("No session found!");
-
         const sessionRef = doc(db, "sessions", latestSession.id);
+        const flopValues = flopInputs.map(input => input.value.trim());
         await updateDoc(sessionRef, {
           board: {
-            flop: flopInput.value.split(",").map(s => s.trim()).filter(s => s),
+            flop: flopValues,
             turn: turnInput.value.trim(),
             river: riverInput.value.trim()
           }
         });
-
         alert("✅ Board updated!");
         console.log("Board written to Firestore:", {
-          flop: flopInput.value,
+          flop: flopValues,
           turn: turnInput.value,
           river: riverInput.value
         });
@@ -229,9 +233,11 @@
     <ul id="allHoleCardsList"></ul>
 
     <h3>Board Cards</h3>
-    <input id="flopInput" placeholder="Flop cards (comma separated)" />
-    <input id="turnInput" placeholder="Turn card" />
-    <input id="riverInput" placeholder="River card" />
+    <input id="flop1Input" placeholder="Flop Card 1" />
+    <input id="flop2Input" placeholder="Flop Card 2" />
+    <input id="flop3Input" placeholder="Flop Card 3" />
+    <input id="turnInput" placeholder="Turn Card" />
+    <input id="riverInput" placeholder="River Card" />
     <button id="submitBoardBtn">Update Board</button>
   </div>
 </body>
