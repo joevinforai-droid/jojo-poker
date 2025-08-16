@@ -31,5 +31,26 @@
 
       console.log("✅ Firebase is connected!");
     </script>
+    <script>
+  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const db = getFirestore();
+
+  // Test: add something to Firestore
+  async function testFirestore() {
+    try {
+      const docRef = await addDoc(collection(db, "testCollection"), {
+        name: "Jojo Poker",
+        created: new Date()
+      });
+      console.log("Test document written with ID: ", docRef.id);
+    } catch (e) {
+      console.error("Error adding document: ", e);
+    }
+  }
+
+  testFirestore();
+</script>
+
   </body>
 </html>
