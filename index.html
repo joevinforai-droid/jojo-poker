@@ -2,41 +2,54 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Jojo Poker</title>
-<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jojo Poker - Dealer</title>
+<style>
+body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
+h1 { text-align: center; }
+.container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+input, button { padding: 8px; margin: 4px; }
+.player-row { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
+.board-inputs input { width: 50px; text-align: center; }
+</style>
 </head>
 <body>
-<h1>Jojo Poker Lobby</h1>
 
-<input id="nameInput" placeholder="Enter your name" />
-<button id="joinBtn">Join Lobby</button>
+<div class="container">
+<h1>Jojo Poker - Dealer</h1>
 
-<h2>Players in Lobby:</h2>
-<ul id="players"></ul>
-
-<div id="holeCardsDiv" style="display:none;">
-  <h2>Your Hole Cards</h2>
-  <input id="card1" placeholder="Card 1 (e.g., Ah)" />
-  <input id="card2" placeholder="Card 2 (e.g., Kd)" />
-  <button id="submitHoleBtn">Submit Hole Cards</button>
+<div>
+    <button id="createSessionBtn">Create New Session</button>
+    <span id="sessionIdDisplay"></span>
 </div>
 
-<div id="adminDiv" style="display:none;">
-  <h2>Admin / Dealer View</h2>
-  <ul id="allHoleCardsList"></ul>
+<h3>Add Player</h3>
+<input type="text" id="playerNameInput" placeholder="Player Name">
+<button id="addPlayerBtn">Add Player</button>
 
-  <h3>Board Cards</h3>
-  <input id="flop1Input" placeholder="Flop Card 1" />
-  <input id="flop2Input" placeholder="Flop Card 2" />
-  <input id="flop3Input" placeholder="Flop Card 3" />
-  <input id="turnInput" placeholder="Turn Card" />
-  <input id="riverInput" placeholder="River Card" />
-  <button id="submitBoardBtn">Update Board</button>
-  <button id="resetBoardBtn">Reset Board</button>
+<h3>Players</h3>
+<div id="playersList"></div>
+
+<h3>Hole Cards</h3>
+<div id="holeCardsList"></div>
+
+<h3>Board Cards</h3>
+<div class="board-inputs">
+    Flop: <input id="flop1" maxlength="2"> <input id="flop2" maxlength="2"> <input id="flop3" maxlength="2"><br>
+    Turn: <input id="turn" maxlength="2"><br>
+    River: <input id="river" maxlength="2"><br>
+    <button id="updateBoardBtn">Update Board</button>
 </div>
+
+<div id="log" style="margin-top:20px;"></div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
 
 <script>
+// TODO: Replace with your Firebase project config
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -46,120 +59,116 @@ const firebaseConfig = {
   appId: "YOUR_APP_ID"
 };
 
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-const nameInput = document.getElementById("nameInput");
-const joinBtn = document.getElementById("joinBtn");
-const playersList = document.getElementById("players");
-const holeCardsDiv = document.getElementById("holeCardsDiv");
-const card1Input = document.getElementById("card1");
-const card2Input = document.getElementById("card2");
-const submitHoleBtn = document.getElementById("submitHoleBtn");
-const adminDiv = document.getElementById("adminDiv");
-const allHoleCardsList = document.getElementById("allHoleCardsList");
-const flopInputs = [
-  document.getElementById("flop1Input"),
-  document.getElementById("flop2Input"),
-  document.getElementById("flop3Input")
-];
-const turnInput = document.getElementById("turnInput");
-const riverInput = document.getElementById("riverInput");
-const submitBoardBtn = document.getElementById("submitBoardBtn");
-const resetBoardBtn = document.getElementById("resetBoardBtn");
+// State
+let currentSessionId = null;
+let sessionData = { players: [], holeCards: {}, board: { flop: ["","",""], turn:"", river:"" }, status:"waiting" };
 
-let playerName = "";
-const sessionDoc = db.collection("sessions").doc("current");
+// DOM Elements
+const sessionIdDisplay = document.getElementById("sessionIdDisplay");
+const playersList = document.getElementById("playersList");
+const holeCardsList = document.getElementById("holeCardsList");
+const logDiv = document.getElementById("log");
 
-// Join Lobby
-joinBtn.onclick = async function() {
-  const name = nameInput.value.trim();
-  if(!name) return alert("Enter your name!");
-  playerName = name;
-  try {
-    const docSnap = await sessionDoc.get();
-    const data = docSnap.exists ? docSnap.data() : {};
-    const players = data.players || [];
-    if(!players.includes(name)) players.push(name);
-
-    await sessionDoc.set({
-      players: players,
-      holeCards: data.holeCards || {},
-      board: data.board || { flop:["","",""], turn:"", river:"" },
-      status: "waiting"
-    });
-
-    holeCardsDiv.style.display = "block";
-    adminDiv.style.display = "block";
-    alert("✅ Joined lobby as " + name);
-  } catch(e) {
-    console.error("❌ Error joining lobby:", e);
-    alert("Failed to join lobby");
-  }
-};
-
-// Live updates
-sessionDoc.onSnapshot(docSnap=>{
-  if(!docSnap.exists) return;
-  const data = docSnap.data();
-
-  // Players
-  playersList.innerHTML = "";
-  (data.players||[]).forEach(n=>{
-    const li = document.createElement("li");
-    li.textContent = n;
-    playersList.appendChild(li);
-  });
-
-  // Hole cards
-  allHoleCardsList.innerHTML = "";
-  for(const [name,cards] of Object.entries(data.holeCards||{})){
-    const li = document.createElement("li");
-    li.textContent = name+": "+cards.join(", ");
-    allHoleCardsList.appendChild(li);
-  }
-
-  // Board
-  data.board.flop.forEach((card,i)=>{
-    if(flopInputs[i].value!==card && document.activeElement!==flopInputs[i]) flopInputs[i].value = card;
-  });
-  if(turnInput.value!==data.board.turn && document.activeElement!==turnInput) turnInput.value = data.board.turn||"";
-  if(riverInput.value!==data.board.river && document.activeElement!==riverInput) riverInput.value = data.board.river||"";
+// Create session
+document.getElementById("createSessionBtn").addEventListener("click", async () => {
+    try {
+        const docRef = await db.collection("sessions").add({
+            players: [],
+            holeCards: {},
+            board: { flop: ["","",""], turn:"", river:"" },
+            status: "waiting",
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        currentSessionId = docRef.id;
+        sessionData = { players: [], holeCards: {}, board: { flop: ["","",""], turn:"", river:"" }, status:"waiting" };
+        sessionIdDisplay.textContent = "Session ID: " + currentSessionId;
+        playersList.innerHTML = "";
+        holeCardsList.innerHTML = "";
+        log("✅ Session created: " + currentSessionId);
+    } catch(e) {
+        log("❌ Error creating session: " + e);
+    }
 });
 
-// Submit hole cards
-submitHoleBtn.onclick = async function(){
-  const c1 = card1Input.value.trim();
-  const c2 = card2Input.value.trim();
-  if(!c1||!c2) return alert("Enter both cards!");
-  try{
-    const docSnap = await sessionDoc.get();
-    const data = docSnap.data();
-    const holeCards = Object.assign({}, data.holeCards);
-    holeCards[playerName] = [c1,c2];
-    await sessionDoc.update({ holeCards });
-  }catch(e){ console.error(e); }
-};
+// Add player
+document.getElementById("addPlayerBtn").addEventListener("click", async () => {
+    const nameInput = document.getElementById("playerNameInput");
+    const name = nameInput.value.trim();
+    if(!name || !currentSessionId) return;
+    if(sessionData.players.includes(name)) { log("❌ Player already exists"); return; }
+    sessionData.players.push(name);
+    sessionData.holeCards[name] = ["",""];
+    await db.collection("sessions").doc(currentSessionId).update(sessionData);
+    renderPlayers();
+    renderHoleCards();
+    nameInput.value = "";
+    log("✅ Player added: " + name);
+});
+
+// Render players
+function renderPlayers() {
+    playersList.innerHTML = "";
+    sessionData.players.forEach(player => {
+        const div = document.createElement("div");
+        div.textContent = player;
+        playersList.appendChild(div);
+    });
+}
+
+// Render hole cards
+function renderHoleCards() {
+    holeCardsList.innerHTML = "";
+    sessionData.players.forEach(player => {
+        const div = document.createElement("div");
+        div.className = "player-row";
+        div.innerHTML = `
+            <span>${player}</span>
+            Card1: <input maxlength="2" data-player="${player}" data-card="0" value="${sessionData.holeCards[player][0]}">
+            Card2: <input maxlength="2" data-player="${player}" data-card="1" value="${sessionData.holeCards[player][1]}">
+        `;
+        holeCardsList.appendChild(div);
+    });
+
+    // Add input listeners
+    holeCardsList.querySelectorAll("input").forEach(input => {
+        input.addEventListener("input", async (e)=>{
+            const p = e.target.dataset.player;
+            const c = parseInt(e.target.dataset.card);
+            sessionData.holeCards[p][c] = e.target.value.toUpperCase();
+            if(currentSessionId){
+                await db.collection("sessions").doc(currentSessionId).update({ holeCards: sessionData.holeCards });
+            }
+        });
+    });
+}
 
 // Update board
-submitBoardBtn.onclick = async function(){
-  try{
-    const docSnap = await sessionDoc.get();
-    const data = docSnap.data();
-    const flopValues = flopInputs.map(i=>i.value.trim());
-    await sessionDoc.update({
-      board: { flop: flopValues, turn: turnInput.value.trim(), river: riverInput.value.trim() }
-    });
-  }catch(e){ console.error(e); }
-};
+document.getElementById("updateBoardBtn").addEventListener("click", async ()=>{
+    const flop = [
+        document.getElementById("flop1").value.toUpperCase(),
+        document.getElementById("flop2").value.toUpperCase(),
+        document.getElementById("flop3").value.toUpperCase()
+    ];
+    const turn = document.getElementById("turn").value.toUpperCase();
+    const river = document.getElementById("river").value.toUpperCase();
+    sessionData.board = { flop, turn, river };
+    if(currentSessionId){
+        try {
+            await db.collection("sessions").doc(currentSessionId).update({ board: sessionData.board });
+            log("✅ Board updated");
+        } catch(e){ log("❌ Error updating board: " + e); }
+    }
+});
 
-// Reset board
-resetBoardBtn.onclick = async function(){
-  try{
-    await sessionDoc.update({ board:{ flop:["","",""], turn:"", river:"" } });
-  }catch(e){ console.error(e); }
-};
+// Log helper
+function log(msg){ 
+    const p = document.createElement("div"); 
+    p.textContent = msg; 
+    logDiv.appendChild(p);
+}
 </script>
 </body>
 </html>
