@@ -5,8 +5,7 @@
 <title>Jojo Poker</title>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, doc, setDoc, updateDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-import { evalHand } from "https://cdn.jsdelivr.net/npm/poker-evaluator@2.0.1/dist/poker-evaluator.min.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
@@ -20,34 +19,16 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// HTML Elements
 const nameInput = document.getElementById("nameInput");
 const joinBtn = document.getElementById("joinBtn");
-const playersList = document.getElementById("players");
 const holeCardsDiv = document.getElementById("holeCardsDiv");
-const card1Input = document.getElementById("card1");
-const card2Input = document.getElementById("card2");
-const submitHoleBtn = document.getElementById("submitHoleBtn");
 const adminDiv = document.getElementById("adminDiv");
-const allHoleCardsList = document.getElementById("allHoleCardsList");
-const flopInputs = [
-  document.getElementById("flop1Input"),
-  document.getElementById("flop2Input"),
-  document.getElementById("flop3Input")
-];
-const turnInput = document.getElementById("turnInput");
-const riverInput = document.getElementById("riverInput");
-const submitBoardBtn = document.getElementById("submitBoardBtn");
-const resetBoardBtn = document.getElementById("resetBoardBtn");
 
-let playerName = "";
 const sessionDoc = doc(db, "sessions", "current");
 
-// -------------------- Join Lobby --------------------
 joinBtn.addEventListener("click", async () => {
   const name = nameInput.value.trim();
   if (!name) return alert("Enter your name!");
-  playerName = name;
 
   try {
     const sessionSnap = await getDoc(sessionDoc);
@@ -57,112 +38,16 @@ joinBtn.addEventListener("click", async () => {
 
     await setDoc(sessionDoc, { 
       players, 
-      status: sessionData.status || "waiting",
-      holeCards: sessionData.holeCards || {},
-      board: sessionData.board || { flop: ["", "", ""], turn: "", river: "" }
-    });
-
-    holeCardsDiv.style.display = "block";
-    adminDiv.style.display = "block";
-    alert(`✅ Joined lobby as ${name}`);
-  } catch(e) {
-    console.error("Error joining lobby:", e);
-  }
-});
-
-// -------------------- Live updates --------------------
-onSnapshot(sessionDoc, docSnap => {
-  if (!docSnap.exists()) return;
-  const data = docSnap.data();
-
-  // Players list
-  playersList.innerHTML = "";
-  (data.players || []).forEach(name => {
-    const li = document.createElement("li");
-    li.textContent = name;
-    playersList.appendChild(li);
-  });
-
-  // Hole cards admin view
-  const holeCards = data.holeCards || {};
-  allHoleCardsList.innerHTML = "";
-  const boardCards = [...(data.board?.flop || []), data.board?.turn, data.board?.river].filter(Boolean);
-
-  for (const [name, cards] of Object.entries(holeCards)) {
-    const li = document.createElement("li");
-    li.textContent = `${name}: ${cards.join(", ")}`;
-    try {
-      const combined = [...cards, ...boardCards];
-      const evalResult = evalHand(combined.map(c => c.toUpperCase()));
-      li.textContent += ` | Hand Rank: ${evalResult.name}`;
-    } catch(e) {
-      li.textContent += ` | Hand Rank: N/A`;
-    }
-    allHoleCardsList.appendChild(li);
-  }
-
-  // Update board inputs
-  data.board?.flop?.forEach((card, i) => {
-    if (flopInputs[i].value !== card && document.activeElement !== flopInputs[i]) {
-      flopInputs[i].value = card;
-    }
-  });
-  if (turnInput.value !== data.board?.turn && document.activeElement !== turnInput) {
-    turnInput.value = data.board?.turn || "";
-  }
-  if (riverInput.value !== data.board?.river && document.activeElement !== riverInput) {
-    riverInput.value = data.board?.river || "";
-  }
-});
-
-// -------------------- Submit Hole Cards --------------------
-submitHoleBtn.addEventListener("click", async () => {
-  const c1 = card1Input.value.trim();
-  const c2 = card2Input.value.trim();
-  if (!c1 || !c2) return alert("Enter both cards!");
-  try {
-    const sessionSnap = await getDoc(sessionDoc);
-    if (!sessionSnap.exists()) return alert("No session found!");
-    const sessionData = sessionSnap.data();
-    const newHoleCards = { ...(sessionData.holeCards || {}) };
-    newHoleCards[playerName] = [c1, c2];
-    await updateDoc(sessionDoc, { holeCards: newHoleCards });
-    alert("✅ Hole cards submitted!");
-  } catch(e) {
-    console.error("Error submitting hole cards:", e);
-  }
-});
-
-// -------------------- Board --------------------
-submitBoardBtn.addEventListener("click", async () => {
-  try {
-    const sessionSnap = await getDoc(sessionDoc);
-    if (!sessionSnap.exists()) return;
-    const sessionData = sessionSnap.data();
-    const flopValues = flopInputs.map(input => input.value.trim());
-    await updateDoc(sessionDoc, {
-      board: {
-        flop: flopValues,
-        turn: turnInput.value.trim(),
-        river: riverInput.value.trim()
-      }
-    });
-    alert("✅ Board updated!");
-  } catch(e) {
-    console.error("Error updating board:", e);
-  }
-});
-
-resetBoardBtn.addEventListener("click", async () => {
-  try {
-    const sessionSnap = await getDoc(sessionDoc);
-    if (!sessionSnap.exists()) return;
-    await updateDoc(sessionDoc, {
+      holeCards: {}, 
       board: { flop: ["", "", ""], turn: "", river: "" }
     });
-    alert("✅ Board reset!");
+
+    alert(`✅ Joined lobby as ${name}`);
+    holeCardsDiv.style.display = "block";
+    adminDiv.style.display = "block";
   } catch(e) {
-    console.error("Error resetting board:", e);
+    console.error("Error joining lobby:", e);
+    alert("❌ Failed to join lobby. Check console for errors.");
   }
 });
 </script>
@@ -172,28 +57,12 @@ resetBoardBtn.addEventListener("click", async () => {
 <input id="nameInput" placeholder="Enter your name" />
 <button id="joinBtn">Join Lobby</button>
 
-<h2>Players in Lobby:</h2>
-<ul id="players"></ul>
-
 <div id="holeCardsDiv" style="display:none;">
-  <h2>Your Hole Cards</h2>
-  <input id="card1" placeholder="Card 1 (e.g., Ah)" />
-  <input id="card2" placeholder="Card 2 (e.g., Kd)" />
-  <button id="submitHoleBtn">Submit Hole Cards</button>
+  <h2>Your Hole Cards (placeholder)</h2>
 </div>
 
 <div id="adminDiv" style="display:none;">
-  <h2>Admin / Dealer View</h2>
-  <ul id="allHoleCardsList"></ul>
-
-  <h3>Board Cards</h3>
-  <input id="flop1Input" placeholder="Flop Card 1" />
-  <input id="flop2Input" placeholder="Flop Card 2" />
-  <input id="flop3Input" placeholder="Flop Card 3" />
-  <input id="turnInput" placeholder="Turn Card" />
-  <input id="riverInput" placeholder="River Card" />
-  <button id="submitBoardBtn">Update Board</button>
-  <button id="resetBoardBtn">Reset Board</button>
+  <h2>Admin View (placeholder)</h2>
 </div>
 </body>
 </html>
