@@ -6,7 +6,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { 
-      getFirestore, collection, addDoc, getDocs, onSnapshot, doc, setDoc, updateDoc 
+      getFirestore, collection, doc, setDoc, updateDoc, getDoc, onSnapshot 
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     // Firebase config
@@ -27,8 +27,6 @@
     const joinBtn = document.getElementById("joinBtn");
     const playersList = document.getElementById("players");
     const startBtn = document.getElementById("startBtn");
-    const createSessionBtn = document.getElementById("createSessionBtn");
-    const sessionList = document.getElementById("sessionList");
     const gameStatus = document.getElementById("gameStatus");
     const holeCardsDiv = document.getElementById("holeCardsDiv");
     const card1Input = document.getElementById("card1");
@@ -45,124 +43,59 @@
     const turnInput = document.getElementById("turnInput");
     const riverInput = document.getElementById("riverInput");
     const submitBoardBtn = document.getElementById("submitBoardBtn");
+    const resetBoardBtn = document.getElementById("resetBoardBtn");
 
     let playerName = "";
+    const sessionDoc = doc(db, "sessions", "current"); // single session doc
 
     // Join Lobby
     joinBtn.addEventListener("click", async () => {
       const name = nameInput.value.trim();
       if (!name) return alert("Enter your name!");
       playerName = name;
+
       try {
-        await addDoc(collection(db, "players"), { name });
-        console.log("✅ Player joined:", name);
+        const sessionSnap = await getDoc(sessionDoc);
+        let sessionData = {};
+        if (sessionSnap.exists()) sessionData = sessionSnap.data();
+        const players = sessionData.players || [];
+        if (!players.includes(name)) players.push(name);
+
+        await setDoc(sessionDoc, { 
+          players, 
+          status: sessionData.status || "waiting",
+          holeCards: sessionData.holeCards || {},
+          board: sessionData.board || { flop: ["", "", ""], turn: "", river: "" }
+        });
         holeCardsDiv.style.display = "block";
+        console.log("✅ Player joined:", name);
       } catch(e) {
         console.error("❌ Error joining:", e);
       }
     });
 
     // Live players list
-    onSnapshot(collection(db, "players"), snapshot => {
+    onSnapshot(sessionDoc, docSnap => {
+      if (!docSnap.exists()) return;
+      const data = docSnap.data();
       playersList.innerHTML = "";
-      snapshot.forEach(doc => {
+      (data.players || []).forEach(name => {
         const li = document.createElement("li");
-        li.textContent = doc.data().name;
+        li.textContent = name;
         playersList.appendChild(li);
       });
-    });
+      gameStatus.innerText = `Game Status: ${data.status || "waiting"}`;
 
-    // Start Game
-    const gameRef = doc(db, "game", "state");
-    startBtn.addEventListener("click", async () => {
-      try {
-        await setDoc(gameRef, { status: "started" });
-        console.log("✅ Game started!");
-      } catch(e) {
-        console.error("❌ Error starting game:", e);
-      }
-    });
-
-    onSnapshot(gameRef, docSnap => {
-      if(docSnap.exists()) {
-        const status = docSnap.data().status;
-        gameStatus.innerText = `Game Status: ${status}`;
-      }
-    });
-
-    // Create Poker Session
-    createSessionBtn.addEventListener("click", async () => {
-      try {
-        const playersSnapshot = await getDocs(collection(db, "players"));
-        const players = [];
-        playersSnapshot.forEach(doc => players.push(doc.data().name));
-        if(players.length === 0) return alert("No players to start a session!");
-        const docRef = await addDoc(collection(db, "sessions"), {
-          name: `Session ${new Date().toLocaleTimeString()}`,
-          players: players,
-          createdAt: new Date(),
-          status: "waiting",
-          buyIn: 0,
-          moneyInHand: 0,
-          holeCards: {},
-          board: { flop: ["", "", ""], turn: "", river: "" }
-        });
-        console.log("✅ Session created with ID:", docRef.id);
-      } catch(e) {
-        console.error("❌ Error creating session:", e);
-      }
-    });
-
-    // Live session list
-    onSnapshot(collection(db, "sessions"), snapshot => {
-      sessionList.innerHTML = "";
-      snapshot.forEach(doc => {
-        const s = doc.data();
-        const li = document.createElement("li");
-        li.textContent = `${s.name} | Players: ${s.players.join(", ")} | Status: ${s.status}`;
-        sessionList.appendChild(li);
-      });
-    });
-
-    // Submit Hole Cards
-    submitHoleBtn.addEventListener("click", async () => {
-      const c1 = card1Input.value.trim();
-      const c2 = card2Input.value.trim();
-      if(!c1 || !c2) return alert("Enter both cards!");
-      try {
-        const sessionsSnapshot = await getDocs(collection(db, "sessions"));
-        let latestSession = null;
-        sessionsSnapshot.forEach(doc => latestSession = { id: doc.id, data: doc.data() });
-        if(!latestSession) return alert("No session found!");
-        const sessionRef = doc(db, "sessions", latestSession.id);
-        const newHoleCards = latestSession.data.holeCards || {};
-        newHoleCards[playerName] = [c1, c2];
-        await updateDoc(sessionRef, { holeCards: newHoleCards });
-        console.log("✅ Hole cards submitted!");
-        alert("Hole cards submitted!");
-      } catch(e) {
-        console.error("❌ Error submitting hole cards:", e);
-      }
-    });
-
-    // Admin / Board live updates
-    onSnapshot(collection(db, "sessions"), snapshot => {
-      let latestSession = null;
-      snapshot.forEach(doc => latestSession = { id: doc.id, data: doc.data() });
-      if(!latestSession) return;
-
-      const data = latestSession.data;
-
-      // Hole cards
+      // Hole cards admin view
       const holeCards = data.holeCards || {};
       allHoleCardsList.innerHTML = "";
-      for(const [name, cards] of Object.entries(holeCards)) {
+      for (const [name, cards] of Object.entries(holeCards)) {
         const li = document.createElement("li");
         li.textContent = `${name}: ${cards.join(", ")}`;
         allHoleCardsList.appendChild(li);
       }
 
-      // Board inputs: only update if value changed and user not typing
+      // Board inputs only overwrite if different and not typing
       data.board?.flop?.forEach((card, i) => {
         if (flopInputs[i].value !== card && document.activeElement !== flopInputs[i]) {
           flopInputs[i].value = card;
@@ -176,16 +109,48 @@
       }
     });
 
+    // Start Game
+    startBtn.addEventListener("click", async () => {
+      try {
+        const sessionSnap = await getDoc(sessionDoc);
+        let sessionData = sessionSnap.exists() ? sessionSnap.data() : {};
+        await setDoc(sessionDoc, { 
+          ...sessionData, 
+          status: "started" 
+        });
+        console.log("✅ Game started!");
+      } catch(e) {
+        console.error("❌ Error starting game:", e);
+      }
+    });
+
+    // Submit Hole Cards
+    submitHoleBtn.addEventListener("click", async () => {
+      const c1 = card1Input.value.trim();
+      const c2 = card2Input.value.trim();
+      if (!c1 || !c2) return alert("Enter both cards!");
+      try {
+        const sessionSnap = await getDoc(sessionDoc);
+        if (!sessionSnap.exists()) return alert("No session found!");
+        const sessionData = sessionSnap.data();
+        const newHoleCards = sessionData.holeCards || {};
+        newHoleCards[playerName] = [c1, c2];
+        await updateDoc(sessionDoc, { holeCards: newHoleCards });
+        console.log("✅ Hole cards submitted!");
+        alert("Hole cards submitted!");
+      } catch(e) {
+        console.error("❌ Error submitting hole cards:", e);
+      }
+    });
+
     // Submit Board
     submitBoardBtn.addEventListener("click", async () => {
       try {
-        const sessionsSnapshot = await getDocs(collection(db, "sessions"));
-        let latestSession = null;
-        sessionsSnapshot.forEach(doc => latestSession = { id: doc.id, data: doc.data() });
-        if(!latestSession) return alert("No session found!");
-        const sessionRef = doc(db, "sessions", latestSession.id);
+        const sessionSnap = await getDoc(sessionDoc);
+        if (!sessionSnap.exists()) return alert("No session found!");
+        const sessionData = sessionSnap.data();
         const flopValues = flopInputs.map(input => input.value.trim());
-        await updateDoc(sessionRef, {
+        await updateDoc(sessionDoc, {
           board: {
             flop: flopValues,
             turn: turnInput.value.trim(),
@@ -193,13 +158,23 @@
           }
         });
         alert("✅ Board updated!");
-        console.log("Board written to Firestore:", {
-          flop: flopValues,
-          turn: turnInput.value,
-          river: riverInput.value
-        });
       } catch(e) {
         console.error("❌ Error updating board:", e);
+      }
+    });
+
+    // Reset Board
+    resetBoardBtn.addEventListener("click", async () => {
+      try {
+        const sessionSnap = await getDoc(sessionDoc);
+        if (!sessionSnap.exists()) return;
+        const sessionData = sessionSnap.data();
+        await updateDoc(sessionDoc, {
+          board: { flop: ["", "", ""], turn: "", river: "" }
+        });
+        alert("✅ Board reset!");
+      } catch(e) {
+        console.error("❌ Error resetting board:", e);
       }
     });
 
@@ -214,10 +189,6 @@
   <ul id="players"></ul>
 
   <button id="startBtn">Start Game</button>
-  <button id="createSessionBtn">Create Poker Session</button>
-
-  <h2>Active Sessions:</h2>
-  <ul id="sessionList"></ul>
 
   <p id="gameStatus"></p>
 
@@ -239,6 +210,7 @@
     <input id="turnInput" placeholder="Turn Card" />
     <input id="riverInput" placeholder="River Card" />
     <button id="submitBoardBtn">Update Board</button>
+    <button id="resetBoardBtn">Reset Board</button>
   </div>
 </body>
 </html>
