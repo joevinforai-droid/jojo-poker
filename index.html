@@ -44,7 +44,6 @@
     const submitBoardBtn = document.getElementById("submitBoardBtn");
 
     let playerName = "";
-    let latestSessionId = "";
 
     // 🔹 Join Lobby
     joinBtn.addEventListener("click", async () => {
@@ -107,7 +106,6 @@
           holeCards: {},
           board: { flop: [], turn: "", river: "" }
         });
-        latestSessionId = docRef.id;
         console.log("✅ Session created with ID:", docRef.id);
       } catch(e) {
         console.error("❌ Error creating session:", e);
@@ -122,7 +120,6 @@
         const li = document.createElement("li");
         li.textContent = `${s.name} | Players: ${s.players.join(", ")} | Status: ${s.status}`;
         sessionList.appendChild(li);
-        latestSessionId = doc.id; // always track latest
       });
     });
 
@@ -131,17 +128,18 @@
       const c1 = card1Input.value.trim();
       const c2 = card2Input.value.trim();
       if(!c1 || !c2) return alert("Enter both cards!");
-      if(!latestSessionId) return alert("No session found!");
 
       try {
-        const sessionRef = doc(db, "sessions", latestSessionId);
-        const sessionSnap = await getDocs(collection(db, "sessions"));
-        const newHoleCards = {};
-        sessionSnap.forEach(doc => {
-          if(doc.id === latestSessionId) Object.assign(newHoleCards, doc.data().holeCards || {});
-        });
+        const sessionsSnapshot = await getDocs(collection(db, "sessions"));
+        let latestSession = null;
+        sessionsSnapshot.forEach(doc => latestSession = { id: doc.id, data: doc.data() }); 
 
+        if(!latestSession) return alert("No session found!");
+
+        const sessionRef = doc(db, "sessions", latestSession.id);
+        const newHoleCards = latestSession.data.holeCards || {};
         newHoleCards[playerName] = [c1, c2];
+
         await updateDoc(sessionRef, { holeCards: newHoleCards });
         console.log("✅ Hole cards submitted!");
         alert("Hole cards submitted!");
@@ -151,27 +149,42 @@
     });
 
     // 🔹 Admin view: show all hole cards live
-    onSnapshot(doc(db, "sessions", latestSessionId), docSnap => {
-      if(!docSnap.exists()) return;
-      const data = docSnap.data();
-      const holeCards = data.holeCards || {};
-      allHoleCardsList.innerHTML = "";
-      for(const [name, cards] of Object.entries(holeCards)) {
-        const li = document.createElement("li");
-        li.textContent = `${name}: ${cards.join(", ")}`;
-        allHoleCardsList.appendChild(li);
+    const refreshAdminView = async () => {
+      try {
+        const sessionsSnapshot = await getDocs(collection(db, "sessions"));
+        let latestSession = null;
+        sessionsSnapshot.forEach(doc => latestSession = { id: doc.id, data: doc.data() });
+        if(!latestSession) return;
+
+        const data = latestSession.data;
+        const holeCards = data.holeCards || {};
+        allHoleCardsList.innerHTML = "";
+        for(const [name, cards] of Object.entries(holeCards)) {
+          const li = document.createElement("li");
+          li.textContent = `${name}: ${cards.join(", ")}`;
+          allHoleCardsList.appendChild(li);
+        }
+
+        flopInput.value = data.board?.flop.join(", ") || "";
+        turnInput.value = data.board?.turn || "";
+        riverInput.value = data.board?.river || "";
+      } catch(e) {
+        console.error("❌ Error refreshing admin view:", e);
       }
-      // Show board
-      flopInput.value = data.board?.flop.join(", ") || "";
-      turnInput.value = data.board?.turn || "";
-      riverInput.value = data.board?.river || "";
-    });
+    };
+
+    // Refresh admin view every 1 second
+    setInterval(refreshAdminView, 1000);
 
     // 🔹 Submit board (flop/turn/river)
     submitBoardBtn.addEventListener("click", async () => {
-      if(!latestSessionId) return alert("No session found!");
       try {
-        const sessionRef = doc(db, "sessions", latestSessionId);
+        const sessionsSnapshot = await getDocs(collection(db, "sessions"));
+        let latestSession = null;
+        sessionsSnapshot.forEach(doc => latestSession = { id: doc.id, data: doc.data() });
+        if(!latestSession) return alert("No session found!");
+
+        const sessionRef = doc(db, "sessions", latestSession.id);
         await updateDoc(sessionRef, {
           board: {
             flop: flopInput.value.split(",").map(s => s.trim()).filter(s => s),
@@ -179,7 +192,13 @@
             river: riverInput.value.trim()
           }
         });
+
         alert("✅ Board updated!");
+        console.log("Board written to Firestore:", {
+          flop: flopInput.value,
+          turn: turnInput.value,
+          river: riverInput.value
+        });
       } catch(e) {
         console.error("❌ Error updating board:", e);
       }
