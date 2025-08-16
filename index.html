@@ -31,10 +31,12 @@
 
       console.log("✅ Firebase is connected!");
     </script>
-    <script>
+   <script type="module">
   import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
-  const db = getFirestore();
+  const app = getApp();
+  const db = getFirestore(app);
 
   // Test: add something to Firestore
   async function testFirestore() {
