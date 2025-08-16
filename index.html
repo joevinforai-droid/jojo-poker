@@ -165,9 +165,11 @@
           allHoleCardsList.appendChild(li);
         }
 
-        flopInput.value = data.board?.flop.join(", ") || "";
-        turnInput.value = data.board?.turn || "";
-        riverInput.value = data.board?.river || "";
+        // Only update board inputs if not focused
+        if(!flopInput.matches(":focus")) flopInput.value = data.board?.flop.join(", ") || "";
+        if(!turnInput.matches(":focus")) turnInput.value = data.board?.turn || "";
+        if(!riverInput.matches(":focus")) riverInput.value = data.board?.river || "";
+
       } catch(e) {
         console.error("❌ Error refreshing admin view:", e);
       }
