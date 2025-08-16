@@ -1,10 +1,35 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="UTF-8">
     <title>Jojo Poker</title>
   </head>
   <body>
     <h1>Welcome to Jojo Poker 🃏</h1>
-    <p>This is your starter page.</p>
+    <p>If you can see this page, the site is live!</p>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+      // Import Firebase
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+      import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+      // Your Firebase config (use the one you saved in notepad)
+      const firebaseConfig = {
+        apiKey: "AIzaSyBiurHUaSI9ytpiTLps9MqY4QHF4MbEt24",
+        authDomain: "jojo-pokler.firebaseapp.com",
+        projectId: "jojo-pokler",
+        storageBucket: "jojo-pokler.firebasestorage.app",
+        messagingSenderId: "963260398028",
+        appId: "1:963260398028:web:ce28df14ea78042e968569",
+        measurementId: "G-V78WWQ0VZQ"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      console.log("✅ Firebase is connected!");
+    </script>
   </body>
 </html>
